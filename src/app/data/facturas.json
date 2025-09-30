@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "emisor": "Proveedor ABC",
+    "rfc": "ABC123456789",
+    "fecha": "2025-08-01",
+    "subtotal": 5000,
+    "iva": 800,
+    "total": 5800,
+    "descripcion": "Compra de insumos"
+  },
+  {
+    "id": 2,
+    "emisor": "Proveedor XYZ",
+    "rfc": "XYZ987654321",
+    "fecha": "2025-08-10",
+    "subtotal": 2000,
+    "iva": 0,
+    "total": 2000,
+    "descripcion": "Servicios exentos"
+  }
+]

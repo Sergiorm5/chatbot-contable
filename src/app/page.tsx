@@ -1,103 +1,221 @@
-import Image from "next/image";
+"use client";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Bot, User } from "lucide-react";
+import Modal from "./api/components/modalRFC"; // Modal para RFC
+
+type Mensaje = {
+  remitente: "user" | "bot";
+  texto: string;
+};
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [mensajes, setMensajes] = useState<Mensaje[]>([
+    {
+      remitente: "bot",
+      texto:
+        "👋 Hola, soy tu asistente contable con IA. Selecciona tu RFC, activa el modo detallado si quieres elegir fechas, y pregúntame sobre tus facturas.",
+    },
+  ]);
+  const [entrada, setEntrada] = useState("");
+  const [selectedRFC, setSelectedRFC] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
+  const [modoDetallado, setModoDetallado] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const manejarEnvio = async () => {
+    if (!entrada.trim()) return;
+
+    // Validar fechas solo si está en modo detallado
+    if (modoDetallado) {
+      if (!fechaInicio || !fechaFin) {
+        alert("⚠️ Debes seleccionar un rango de fechas.");
+        return;
+      }
+
+      const diff =
+        (new Date(fechaFin).getTime() - new Date(fechaInicio).getTime()) /
+        (1000 * 60 * 60 * 24);
+
+      if (diff < 0) {
+        alert("⚠️ La fecha fin no puede ser menor que la fecha inicio.");
+        return;
+      }
+      if (diff > 31) {
+        alert("⚠️ El rango no puede ser mayor a 1 mes.");
+        return;
+      }
+    }
+
+    const nuevoMensaje: Mensaje = { remitente: "user", texto: entrada };
+    setMensajes((prev) => [...prev, nuevoMensaje]);
+    setEntrada("");
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: entrada,
+          rfc: selectedRFC,
+          fechaInicio: modoDetallado ? fechaInicio : null,
+          fechaFin: modoDetallado ? fechaFin : null,
+        }),
+      });
+
+      const data = await res.json();
+
+      setMensajes((prev) => [
+        ...prev,
+        { remitente: "bot", texto: data.reply },
+      ]);
+    } catch (err) {
+      setMensajes((prev) => [
+        ...prev,
+        {
+          remitente: "bot",
+          texto: "⚠️ Hubo un error al conectar con el asistente.",
+        },
+      ]);
+    }
+  };
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white p-6">
+      <div className="w-full max-w-3xl bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6">
+        <h1 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-blue-400 to-cyan-300 text-transparent bg-clip-text">
+          🤖 AICuenta
+        </h1>
+
+        {/* Botón de RFC */}
+        <div className="mb-4 flex justify-center gap-4">
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl shadow"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Seleccionar RFC
+          </button>
+
+          <button
+            onClick={() => setModoDetallado((prev) => !prev)}
+            className={`px-4 py-2 rounded-xl shadow ${
+              modoDetallado
+                ? "bg-cyan-500 text-white"
+                : "bg-gray-600 text-gray-300"
+            }`}
+            disabled={!selectedRFC}
           >
-            Read our docs
-          </a>
+            {modoDetallado ? "Modo detallado: ON" : "Modo detallado: OFF"}
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        {selectedRFC && (
+          <p className="text-center text-sm text-gray-300 mb-4">
+             RFC seleccionado: <span className="font-bold">{selectedRFC}</span>
+          </p>
+        )}
+
+        {/* Selector de fechas solo si modo detallado */}
+        {modoDetallado && (
+          <div className="flex gap-4 mb-4 justify-center">
+            <input
+              type="date"
+              className="px-3 py-2 rounded-lg bg-black/40 border border-white/20 text-white"
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+              disabled={!selectedRFC}
+            />
+            <input
+              type="date"
+              className="px-3 py-2 rounded-lg bg-black/40 border border-white/20 text-white"
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+              disabled={!selectedRFC}
+            />
+          </div>
+        )}
+
+        {/* Ventana de chat */}
+<div className="h-[28rem] overflow-y-auto rounded-xl p-4 bg-black/40 space-y-4 border border-white/10">
+  {mensajes.map((m, i) => (
+    <motion.div
+      key={i}
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.25 }}
+      className={`flex items-end gap-3 ${
+        m.remitente === "user" ? "justify-end" : "justify-start"
+      }`}
+    >
+      {/* Avatar del bot */}
+      {m.remitente === "bot" && (
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/40">
+          <Bot size={18} className="text-white" />
+        </div>
+      )}
+
+      {/* Burbuja */}
+      <div
+        className={`px-4 py-2 rounded-2xl max-w-xs whitespace-pre-line shadow-lg transition ${
+          m.remitente === "user"
+            ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-br-none"
+            : "bg-white/10 text-gray-100 border border-white/20 rounded-bl-none"
+        }`}
+      >
+        {m.texto}
+      </div>
+
+      {/* Avatar del usuario */}
+      {m.remitente === "user" && (
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-400 flex items-center justify-center shadow-lg shadow-cyan-400/40">
+          <User size={18} className="text-white" />
+        </div>
+      )}
+    </motion.div>
+  ))}
+</div>
+
+
+        {/* Input */}
+        <div className="flex gap-2 mt-4">
+          <input
+            type="text"
+            className="flex-1 rounded-xl px-4 py-3 bg-black/40 border border-white/20 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-white placeholder-gray-400"
+            placeholder={
+              selectedRFC
+                ? "Escribe tu pregunta sobre facturas..."
+                : "Selecciona primero un RFC"
+            }
+            value={entrada}
+            onChange={(e) => setEntrada(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && manejarEnvio()}
+            disabled={!selectedRFC}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <button
+            className={`px-5 py-3 rounded-xl font-semibold shadow-lg transition ${
+              selectedRFC
+                ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:opacity-90"
+                : "bg-gray-600 text-gray-400 cursor-not-allowed"
+            }`}
+            onClick={manejarEnvio}
+            disabled={!selectedRFC}
+          >
+            Enviar
+          </button>
+        </div>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <Modal
+          onClose={() => setShowModal(false)}
+          onSelectRFC={(rfc) => {
+            setSelectedRFC(rfc);
+            setShowModal(false);
+          }}
+        />
+      )}
+    </main>
   );
 }
