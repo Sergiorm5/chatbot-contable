@@ -20,6 +20,7 @@ type Factura = {
 };
 
 const client = new OpenAI({
+    apiKey: "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" // 🔒 ahora desde variable de entorno
 });
 
 const sqlConfig = {
