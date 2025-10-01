@@ -20,7 +20,7 @@ type Factura = {
 };
 
 const client = new OpenAI({
-      apiKey: "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" // 🔒 ahora desde variable de entorno
+  apiKey: process.env.OPENAI_API_KEY, // 👈 ahora se toma de Vercel
 });
 
 const sqlConfig = {
