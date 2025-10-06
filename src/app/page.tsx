@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Bot, User } from "lucide-react";
-import Modal from "./api/components/modalRFC"; // Modal para RFC
+import Modal from "./api/components/modalRFC";
 
 type Mensaje = {
   remitente: "user" | "bot";
@@ -23,11 +23,11 @@ export default function Home() {
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [modoDetallado, setModoDetallado] = useState(false);
+  const [cargando, setCargando] = useState(false); // 👈 nuevo estado
 
   const manejarEnvio = async () => {
     if (!entrada.trim()) return;
 
-    // Validar fechas solo si está en modo detallado
     if (modoDetallado) {
       if (!fechaInicio || !fechaFin) {
         alert("⚠️ Debes seleccionar un rango de fechas.");
@@ -51,6 +51,7 @@ export default function Home() {
     const nuevoMensaje: Mensaje = { remitente: "user", texto: entrada };
     setMensajes((prev) => [...prev, nuevoMensaje]);
     setEntrada("");
+    setCargando(true); // 👈 activa animación "escribiendo"
 
     try {
       const res = await fetch("/api/chat", {
@@ -78,6 +79,8 @@ export default function Home() {
           texto: "⚠️ Hubo un error al conectar con el asistente.",
         },
       ]);
+    } finally {
+      setCargando(false); // 👈 desactiva animación
     }
   };
 
@@ -88,7 +91,7 @@ export default function Home() {
           🤖 AICuenta
         </h1>
 
-        {/* Botón de RFC */}
+        {/* Botones RFC y modo */}
         <div className="mb-4 flex justify-center gap-4">
           <button
             onClick={() => setShowModal(true)}
@@ -112,11 +115,10 @@ export default function Home() {
 
         {selectedRFC && (
           <p className="text-center text-sm text-gray-300 mb-4">
-             RFC seleccionado: <span className="font-bold">{selectedRFC}</span>
+            RFC seleccionado: <span className="font-bold">{selectedRFC}</span>
           </p>
         )}
 
-        {/* Selector de fechas solo si modo detallado */}
         {modoDetallado && (
           <div className="flex gap-4 mb-4 justify-center">
             <input
@@ -136,46 +138,71 @@ export default function Home() {
           </div>
         )}
 
-        {/* Ventana de chat */}
-<div className="h-[28rem] overflow-y-auto rounded-xl p-4 bg-black/40 space-y-4 border border-white/10">
-  {mensajes.map((m, i) => (
-    <motion.div
-      key={i}
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.25 }}
-      className={`flex items-end gap-3 ${
-        m.remitente === "user" ? "justify-end" : "justify-start"
-      }`}
-    >
-      {/* Avatar del bot */}
-      {m.remitente === "bot" && (
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/40">
-          <Bot size={18} className="text-white" />
+        {/* Chat */}
+        <div className="h-[28rem] overflow-y-auto rounded-xl p-4 bg-black/40 space-y-4 border border-white/10">
+          {mensajes.map((m, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.25 }}
+              className={`flex items-end gap-3 ${
+                m.remitente === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              {m.remitente === "bot" && (
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/40">
+                  <Bot size={18} className="text-white" />
+                </div>
+              )}
+
+              <div
+                className={`px-4 py-2 rounded-2xl max-w-xs whitespace-pre-line shadow-lg transition ${
+                  m.remitente === "user"
+                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-br-none"
+                    : "bg-white/10 text-gray-100 border border-white/20 rounded-bl-none"
+                }`}
+              >
+                {m.texto}
+              </div>
+
+              {m.remitente === "user" && (
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-400 flex items-center justify-center shadow-lg shadow-cyan-400/40">
+                  <User size={18} className="text-white" />
+                </div>
+              )}
+            </motion.div>
+          ))}
+
+          {/* 👇 Animación "escribiendo..." */}
+          {cargando && (
+            <div className="flex items-center gap-3 justify-start">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/40">
+                <Bot size={18} className="text-white" />
+              </div>
+              <div className="px-4 py-2 rounded-2xl max-w-xs bg-white/10 text-gray-100 border border-white/20 rounded-bl-none flex gap-1">
+                <motion.span
+                  animate={{ opacity: [0.2, 1, 0.2] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                >
+                  ●
+                </motion.span>
+                <motion.span
+                  animate={{ opacity: [0.2, 1, 0.2] }}
+                  transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                >
+                  ●
+                </motion.span>
+                <motion.span
+                  animate={{ opacity: [0.2, 1, 0.2] }}
+                  transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                >
+                  ●
+                </motion.span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Burbuja */}
-      <div
-        className={`px-4 py-2 rounded-2xl max-w-xs whitespace-pre-line shadow-lg transition ${
-          m.remitente === "user"
-            ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-br-none"
-            : "bg-white/10 text-gray-100 border border-white/20 rounded-bl-none"
-        }`}
-      >
-        {m.texto}
-      </div>
-
-      {/* Avatar del usuario */}
-      {m.remitente === "user" && (
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-400 flex items-center justify-center shadow-lg shadow-cyan-400/40">
-          <User size={18} className="text-white" />
-        </div>
-      )}
-    </motion.div>
-  ))}
-</div>
-
 
         {/* Input */}
         <div className="flex gap-2 mt-4">
@@ -190,18 +217,18 @@ export default function Home() {
             value={entrada}
             onChange={(e) => setEntrada(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && manejarEnvio()}
-            disabled={!selectedRFC}
+            disabled={!selectedRFC || cargando}
           />
           <button
             className={`px-5 py-3 rounded-xl font-semibold shadow-lg transition ${
-              selectedRFC
+              selectedRFC && !cargando
                 ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:opacity-90"
                 : "bg-gray-600 text-gray-400 cursor-not-allowed"
             }`}
             onClick={manejarEnvio}
-            disabled={!selectedRFC}
+            disabled={!selectedRFC || cargando}
           >
-            Enviar
+            {cargando ? "..." : "Enviar"}
           </button>
         </div>
       </div>
