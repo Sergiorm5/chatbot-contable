@@ -6,7 +6,7 @@ type ModalProps = {
 };
 
 export default function Modal({ onClose, onSelectRFC }: ModalProps) {
-  const rfcList = ["AELB5401024Q7"];
+  const rfcList = ["ORP120524NZ2"];
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
